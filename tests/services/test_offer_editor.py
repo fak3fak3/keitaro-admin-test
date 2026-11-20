@@ -633,3 +633,11 @@ async def test_acknowledge_clears_marks_but_not_conflicts(editor, keitaro_api):
 
     assert [change for _, change, _, _ in marks(stream)] == [None, None, None, None]
     assert [o.offer_id for o in stream.offers if o.conflict] == [3749, 11111]
+
+
+async def test_push_without_draft_does_not_call_keitaro(editor, keitaro_api):
+    await fetched(editor, keitaro_api, FOUR)  # моков Keitaro больше нет: любой запрос уронит тест
+
+    stream = await editor.push(OFFER_STREAM)
+
+    assert offers_view(stream) == [(o, "active", s, False) for o, s in FOUR]

@@ -121,6 +121,8 @@ class OfferEditor:
     async def push(self, stream_id: int) -> Stream:
         """Push to KT: отправить активные офферы с долями; черновик становится опубликованным."""
         stream = await self._get_stream(stream_id)
+        if not stream.has_draft:
+            return stream  # публиковать нечего — не пишем в общий Keitaro зря
         if stream.has_conflicts:
             ids = ", ".join(str(link.offer_id) for link in stream.offers if link.conflict)
             raise ConflictsPendingError(f"Решите конфликты с Keitaro по офферам {ids}, затем Push")
