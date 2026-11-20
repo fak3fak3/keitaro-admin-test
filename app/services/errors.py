@@ -8,3 +8,7 @@ class CampaignSetupError(ServiceError):
 
 class OfferNotFoundError(ServiceError):
     """Оффера нет в Keitaro или он недоступен по нашему ключу."""
+
+
+class ShareError(ServiceError):
+    """Закреплённые доли не позволяют распределить 100% (DISPUTED.md №3)."""
