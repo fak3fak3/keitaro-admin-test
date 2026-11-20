@@ -60,7 +60,7 @@ View in KT (ссылка на кампанию в трекере), Show all offe
 ## Шаги
 
 - [x] 0. Разбор ТЗ, выбор стека и архитектуры, AGENTS.md и docs/
-- [ ] 1. Каркас проекта: FastAPI, конфиг, БД, Alembic, pytest
+- [x] 1. Каркас проекта: FastAPI, конфиг, БД, Alembic, pytest
 - [ ] 2. Клиент Keitaro (`clients/keitaro`)
 - [ ] 3. Часть 1: сервис создания кампании + эндпоинты
 - [ ] 4. Часть 1: фронт формы «New campaign»

@@ -93,3 +93,21 @@
   Keitaro меняется только по Push to KT; Fetch синхронизирует его состояние в нашу БД.
 - **Почему:** так работает эталонная обёртка из видео: черновик, Cancel, архив removed-офферов
   с Bring back и пины живут только у нас, в Keitaro их нет.
+
+## 16. Зависимости и окружение через uv
+
+- **Решение:** `pyproject.toml` + `uv.lock`; установка `uv sync`, запуск `uv run ...`. Python ≥ 3.12.
+  Dev-зависимости (pytest, pytest-asyncio, respx, ruff) в группе `dev`. Линтер и форматтер — ruff.
+- **Почему:** быстрая и воспроизводимая установка по lock-файлу; одна команда для проверяющих.
+
+## 17. Настройки БД отдельно от настроек Keitaro
+
+- **Решение:** `DatabaseSettings` (только `DATABASE_URL`) и `Settings(DatabaseSettings)` с `KEITARO_URL`
+  и `KEITARO_ADMIN_TOKEN` (`SecretStr`). Alembic берёт URL из `DatabaseSettings`.
+- **Почему:** миграции не должны требовать токен Keitaro; токен не светится в repr и логах.
+
+## 18. Папка миграций — `migrations/`, а не `alembic/`
+
+- **Решение:** `script_location = migrations`, async-шаблон Alembic.
+- **Почему:** папка `alembic/` в корне совпадает с именем библиотеки: ruff считает её локальным пакетом,
+  а импорт `alembic` может её перехватить.
