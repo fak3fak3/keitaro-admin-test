@@ -6,10 +6,13 @@ import pytest
 from app.clients.keitaro import KeitaroError
 from app.repositories.streams import StreamRepository
 from app.services.errors import (
+    ConflictsPendingError,
+    NoConflictError,
     OfferAlreadyInStreamError,
     OfferNotFoundError,
     OfferNotInStreamError,
     ShareError,
+    StreamChangedInKeitaroError,
     StreamNotFoundError,
 )
 from app.services.offer_editor import OfferEditor
@@ -313,6 +316,11 @@ async def test_pin_removed_offer_is_rejected(editor, keitaro_api, action):
         await getattr(editor, action)(OFFER_STREAM, 3717)
 
 
+def keitaro_now(keitaro_api, offers):
+    """GET /streams/{id}: что лежит в Keitaro прямо сейчас (проверка перед Push)."""
+    keitaro_api.get(f"/streams/{OFFER_STREAM}").respond(json=kt_stream(OFFER_STREAM, offers))
+
+
 def echo_offers(request):
     """PUT /streams/{id}: Keitaro отвечает потоком с отправленными офферами."""
     body = json.loads(request.content)
@@ -323,6 +331,7 @@ def echo_offers(request):
 async def test_push_sends_active_offers_and_clears_draft(editor, keitaro_api):
     await fetched(editor, keitaro_api, FOUR)
     await editor.remove_offer(OFFER_STREAM, 3717)
+    keitaro_now(keitaro_api, FOUR)
     route = keitaro_api.put(f"/streams/{OFFER_STREAM}").mock(side_effect=echo_offers)
 
     stream = await editor.push(OFFER_STREAM)
@@ -342,6 +351,7 @@ async def test_push_sends_active_offers_and_clears_draft(editor, keitaro_api):
 async def test_failed_push_keeps_draft(editor, keitaro_api):
     await fetched(editor, keitaro_api, FOUR)
     await editor.remove_offer(OFFER_STREAM, 3717)
+    keitaro_now(keitaro_api, FOUR)
     keitaro_api.put(f"/streams/{OFFER_STREAM}").respond(status_code=500, json={"error": "boom"})
 
     with pytest.raises(KeitaroError):
@@ -355,6 +365,7 @@ async def test_push_forgets_offer_added_and_removed_before_publish(editor, keita
     await fetched(editor, keitaro_api, THREE)
     await editor.add_offer(OFFER_STREAM, 11112)
     await editor.remove_offer(OFFER_STREAM, 11112)
+    keitaro_now(keitaro_api, THREE)
     keitaro_api.put(f"/streams/{OFFER_STREAM}").mock(side_effect=echo_offers)
 
     stream = await editor.push(OFFER_STREAM)
@@ -386,3 +397,238 @@ async def test_cancel_keeps_pins(editor, keitaro_api):
     stream = await editor.cancel(OFFER_STREAM)
 
     assert offers_view(stream)[2] == (3717, "active", 33, True)
+
+
+async def test_push_refuses_when_stream_changed_in_keitaro_after_fetch(editor, keitaro_api):
+    await fetched(editor, keitaro_api, FOUR)
+    await editor.remove_offer(OFFER_STREAM, 3717)
+    # пока мы редактировали, кто-то поменял поток в самом Keitaro
+    keitaro_now(keitaro_api, [(3749, 50), (3717, 50)])
+
+    # PUT не замокан: попытка отправить уронит тест ошибкой respx
+    with pytest.raises(StreamChangedInKeitaroError, match="Fetch"):
+        await editor.push(OFFER_STREAM)
+
+    stream = await editor.pin(OFFER_STREAM, 3749)
+    assert stream.has_draft is True  # черновик не потерян
+
+
+def marks(stream):
+    """Пометки Fetch: (offer_id, что изменилось в Keitaro, прежняя доля, конфликт)."""
+    return [
+        (
+            o.offer_id,
+            o.keitaro_change and o.keitaro_change.value,
+            o.keitaro_share_before,
+            o.conflict,
+        )
+        for o in stream.offers
+    ]
+
+
+async def test_first_fetch_has_no_marks(editor, keitaro_api):
+    stream = await fetched(editor, keitaro_api, THREE)
+
+    assert all(change is None and not conflict for _, change, _, conflict in marks(stream))
+
+
+async def test_refetch_of_clean_stream_accepts_keitaro_and_marks_changes(editor, keitaro_api):
+    await fetched(editor, keitaro_api, FOUR)
+
+    (stream,) = await refetch(
+        editor,
+        keitaro_api,
+        [kt_stream(OFFER_STREAM, [(3749, 40), (3717, 25), (11112, 25), (424242, 10)])],
+    )
+
+    assert offers_view(stream) == [
+        (3749, "active", 40, False),
+        (3717, "active", 25, False),
+        (11111, "removed", 0, False),
+        (11112, "active", 25, False),
+        (424242, "active", 10, False),
+    ]
+    assert marks(stream) == [
+        (3749, "share_changed", 25, False),
+        (3717, None, None, False),
+        (11111, "removed", 25, False),
+        (11112, None, None, False),
+        (424242, "added", None, False),
+    ]
+    assert stream.has_draft is False
+
+
+async def test_refetch_keeps_draft_when_keitaro_did_not_change(editor, keitaro_api):
+    await fetched(editor, keitaro_api, FOUR)
+    await editor.remove_offer(OFFER_STREAM, 3717)
+
+    (stream,) = await refetch(editor, keitaro_api, [kt_stream(OFFER_STREAM, FOUR)])
+
+    assert offers_view(stream) == [
+        (3749, "active", 34, False),
+        (3717, "removed", 0, False),
+        (11111, "active", 33, False),
+        (11112, "active", 33, False),
+    ]
+    assert stream.has_draft is True
+    assert stream.has_conflicts is False
+
+
+async def partial_draft(editor, keitaro_api):
+    """Черновик меняет только 11111 (→30) и 11112 (→20); 3749 и 3717 запинены и не тронуты."""
+    await fetched(editor, keitaro_api, FOUR)
+    await editor.pin(OFFER_STREAM, 3749)
+    await editor.pin(OFFER_STREAM, 3717)
+    return await editor.set_share(OFFER_STREAM, 11111, 30)
+
+
+async def test_refetch_marks_conflict_only_where_both_sides_changed(editor, keitaro_api):
+    await partial_draft(editor, keitaro_api)
+
+    # в Keitaro: 3749 25→40 (мы не меняли), 11112 25→10 (мы меняли), 11111 удалён (мы меняли)
+    (stream,) = await refetch(
+        editor, keitaro_api, [kt_stream(OFFER_STREAM, [(3749, 40), (3717, 25), (11112, 10)])]
+    )
+
+    assert offers_view(stream) == [
+        (3749, "active", 40, True),  # принято из Keitaro
+        (3717, "active", 25, True),
+        (11111, "active", 30, True),  # черновик сохранён
+        (11112, "active", 20, False),  # черновик сохранён
+    ]
+    assert marks(stream) == [
+        (3749, "share_changed", 25, False),
+        (3717, None, None, False),
+        (11111, "removed", 25, True),
+        (11112, "share_changed", 25, True),
+    ]
+    assert stream.has_conflicts is True
+    # «взять из Keitaro» должно вернуть то, что там сейчас
+    published = {o.offer_id: (o.published_status.value, o.published_share) for o in stream.offers}
+    assert published[11111] == ("removed", 0)
+    assert published[11112] == ("active", 10)
+
+
+async def two_conflicts(editor, keitaro_api):
+    """Черновик: удалили 3717 (34/0/33/33). В Keitaro: 3749 25→50, 11111 удалён.
+
+    Конфликты: 3749 (у нас 34, в Keitaro 50) и 11111 (у нас 33, в Keitaro удалён).
+    11112 в Keitaro не менялся — просто наш черновик.
+    """
+    await fetched(editor, keitaro_api, FOUR)
+    await editor.remove_offer(OFFER_STREAM, 3717)
+    (stream,) = await refetch(
+        editor, keitaro_api, [kt_stream(OFFER_STREAM, [(3749, 50), (3717, 25), (11112, 25)])]
+    )
+    assert [o.offer_id for o in stream.offers if o.conflict] == [3749, 11111]
+    return stream
+
+
+async def test_conflicting_offers_are_frozen_during_other_changes(editor, keitaro_api):
+    await two_conflicts(editor, keitaro_api)
+
+    stream = await editor.pin(OFFER_STREAM, 11112)  # любое действие с пересчётом
+
+    assert [(o.offer_id, o.share) for o in stream.offers if o.conflict] == [(3749, 34), (11111, 33)]
+
+
+async def test_resolve_with_keitaro_takes_its_value_and_keeps_it_this_time(editor, keitaro_api):
+    await two_conflicts(editor, keitaro_api)
+
+    stream = await editor.resolve(OFFER_STREAM, 3749, keep="keitaro")
+
+    # 3749 = 50 из Keitaro, 11111 ещё в конфликте (заморожен на 33), 11112 поглощает остаток
+    assert offers_view(stream) == [
+        (3749, "active", 50, False),
+        (3717, "removed", 0, False),
+        (11111, "active", 33, False),
+        (11112, "active", 17, False),
+    ]
+    assert [o.offer_id for o in stream.offers if o.conflict] == [11111]
+
+
+async def test_resolving_each_conflict_separately(editor, keitaro_api):
+    await two_conflicts(editor, keitaro_api)
+
+    await editor.resolve(OFFER_STREAM, 3749, keep="keitaro")
+    stream = await editor.resolve(OFFER_STREAM, 11111, keep="mine")
+
+    assert offers_view(stream) == [
+        (3749, "active", 50, False),
+        (3717, "removed", 0, False),
+        (11111, "active", 33, False),
+        (11112, "active", 17, False),
+    ]
+    assert stream.has_conflicts is False
+    assert stream.has_draft is True
+
+
+async def test_resolve_all_with_keitaro_gives_exact_keitaro_state(editor, keitaro_api):
+    await fetched(editor, keitaro_api, FOUR)
+    await editor.remove_offer(OFFER_STREAM, 3717)  # меняет доли всех: все в черновике
+    (stream,) = await refetch(
+        editor,
+        keitaro_api,
+        [kt_stream(OFFER_STREAM, [(3749, 40), (3717, 20), (11111, 20), (11112, 20)])],
+    )
+    assert stream.has_conflicts
+
+    stream = await editor.resolve_all(OFFER_STREAM, keep="keitaro")
+
+    assert offers_view(stream) == [
+        (3749, "active", 40, False),
+        (3717, "active", 20, False),
+        (11111, "active", 20, False),
+        (11112, "active", 20, False),
+    ]
+    assert (stream.has_conflicts, stream.has_draft) == (False, False)
+
+
+async def test_resolve_offer_without_conflict_is_rejected(editor, keitaro_api):
+    await two_conflicts(editor, keitaro_api)
+
+    with pytest.raises(NoConflictError):
+        await editor.resolve(OFFER_STREAM, 11112, keep="mine")
+
+
+async def test_push_is_blocked_while_conflicts_pending(editor, keitaro_api):
+    await two_conflicts(editor, keitaro_api)
+
+    # ни GET, ни PUT не замоканы: в Keitaro не должно уйти ни одного запроса
+    with pytest.raises(ConflictsPendingError, match="3749, 11111"):
+        await editor.push(OFFER_STREAM)
+
+
+async def test_push_clears_keitaro_marks(editor, keitaro_api):
+    await two_conflicts(editor, keitaro_api)
+    stream = await editor.resolve_all(OFFER_STREAM, keep="mine")
+    keitaro_now(keitaro_api, [(3749, 50), (3717, 25), (11112, 25)])
+    keitaro_api.put(f"/streams/{OFFER_STREAM}").mock(side_effect=echo_offers)
+
+    stream = await editor.push(OFFER_STREAM)
+
+    assert all(change is None and before is None for _, change, before, _ in marks(stream))
+
+
+async def test_cancel_clears_conflicts_and_marks(editor, keitaro_api):
+    await two_conflicts(editor, keitaro_api)
+
+    stream = await editor.cancel(OFFER_STREAM)
+
+    # отмена = состояние Keitaro: 3749 50, 3717 25, 11111 удалён, 11112 25
+    assert offers_view(stream) == [
+        (3749, "active", 50, False),
+        (3717, "active", 25, False),
+        (11111, "removed", 0, False),
+        (11112, "active", 25, False),
+    ]
+    assert marks(stream) == [(o, None, None, False) for o in (3749, 3717, 11111, 11112)]
+
+
+async def test_acknowledge_clears_marks_but_not_conflicts(editor, keitaro_api):
+    await two_conflicts(editor, keitaro_api)
+
+    stream = await editor.acknowledge(OFFER_STREAM)
+
+    assert [change for _, change, _, _ in marks(stream)] == [None, None, None, None]
+    assert [o.offer_id for o in stream.offers if o.conflict] == [3749, 11111]

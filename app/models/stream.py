@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import Enum, ForeignKey, UniqueConstraint, func
+from sqlalchemy import Enum, ForeignKey, UniqueConstraint, false, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -12,10 +12,18 @@ class OfferStatus(StrEnum):
     REMOVED = "removed"
 
 
-def _status_column() -> Enum:
+class KeitaroChange(StrEnum):
+    """Что изменилось в Keitaro с прошлого Fetch/Push (пометка для пользователя)."""
+
+    ADDED = "added"
+    REMOVED = "removed"
+    SHARE_CHANGED = "share_changed"
+
+
+def _enum_column(enum_cls: type[StrEnum]) -> Enum:
     """Храним значение ('active'), а не имя элемента ('ACTIVE'); без нативного ENUM в БД."""
     return Enum(
-        OfferStatus,
+        enum_cls,
         native_enum=False,
         length=16,
         values_callable=lambda enum: [member.value for member in enum],
@@ -47,6 +55,11 @@ class Stream(Base):
         """Есть неопубликованные изменения (в интерфейсе — «жёлтый» поток)."""
         return any(offer.is_changed for offer in self.offers)
 
+    @property
+    def has_conflicts(self) -> bool:
+        """Есть офферы, изменённые и у нас, и в Keitaro: Push заблокирован до решения."""
+        return any(offer.conflict for offer in self.offers)
+
 
 class StreamOffer(Base):
     """Привязка оффера к потоку: текущее (черновик) и опубликованное в Keitaro состояние.
@@ -62,12 +75,19 @@ class StreamOffer(Base):
     stream_id: Mapped[int] = mapped_column(ForeignKey("streams.id", ondelete="CASCADE"))
     offer_id: Mapped[int] = mapped_column(comment="id оффера в Keitaro")
     offer_name: Mapped[str]
-    status: Mapped[OfferStatus] = mapped_column(_status_column(), default=OfferStatus.ACTIVE)
+    status: Mapped[OfferStatus] = mapped_column(
+        _enum_column(OfferStatus), default=OfferStatus.ACTIVE
+    )
     share: Mapped[int]
     pinned: Mapped[bool] = mapped_column(default=False)
     sort_order: Mapped[int]
-    published_status: Mapped[OfferStatus | None] = mapped_column(_status_column())
+    published_status: Mapped[OfferStatus | None] = mapped_column(_enum_column(OfferStatus))
     published_share: Mapped[int | None]
+    # Пометки после Fetch (DISPUTED.md №8): что изменилось в Keitaro, прежняя доля,
+    # конфликт с нашим черновиком.
+    keitaro_change: Mapped[KeitaroChange | None] = mapped_column(_enum_column(KeitaroChange))
+    keitaro_share_before: Mapped[int | None]
+    conflict: Mapped[bool] = mapped_column(default=False, server_default=false())
 
     stream: Mapped[Stream] = relationship(back_populates="offers")
 

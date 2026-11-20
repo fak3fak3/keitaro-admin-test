@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 
-from app.models.stream import OfferStatus, Stream, StreamOffer
+from app.models.stream import KeitaroChange, OfferStatus, Stream, StreamOffer
 
 
 def make_stream(**overrides):
@@ -128,3 +128,25 @@ async def test_status_is_stored_as_lowercase_value(db_session):
     raw = await db_session.scalar(text("select status from stream_offers"))
 
     assert raw == "active"
+
+
+async def test_new_offer_has_no_keitaro_marks_and_no_conflict(db_session):
+    stream = make_stream()
+    stream.offers = [StreamOffer(offer_id=1, offer_name="X", share=100, sort_order=0)]
+    db_session.add(stream)
+    await db_session.flush()
+
+    offer = stream.offers[0]
+    assert (offer.keitaro_change, offer.keitaro_share_before, offer.conflict) == (None, None, False)
+    assert stream.has_conflicts is False
+
+
+def test_stream_has_conflicts_when_any_offer_in_conflict():
+    stream = make_stream()
+    stream.offers = [published(1, 50), published(2, 50, conflict=True)]
+
+    assert stream.has_conflicts is True
+
+
+def test_keitaro_change_values():
+    assert [c.value for c in KeitaroChange] == ["added", "removed", "share_changed"]

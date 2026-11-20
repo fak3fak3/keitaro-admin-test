@@ -52,6 +52,10 @@ class KeitaroClient:
         data = await self._request("GET", f"/campaigns/{campaign_id}/streams")
         return [Stream.model_validate(item) for item in data]
 
+    async def get_stream(self, stream_id: int) -> Stream:
+        data = await self._request("GET", f"/streams/{stream_id}")
+        return Stream.model_validate(data)
+
     async def create_stream(self, payload: StreamCreate) -> Stream:
         body = payload.model_dump(by_alias=True, exclude_none=True)
         data = await self._request("POST", "/streams", json=body)

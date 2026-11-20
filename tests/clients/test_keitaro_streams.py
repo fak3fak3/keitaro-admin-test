@@ -180,3 +180,12 @@ async def test_parses_live_keitaro_stream_response(keitaro, keitaro_api):
     assert geo.filters[0].payload == ["MX"]
     assert offers.schema_ == "landings"
     assert [(o.offer_id, o.share) for o in offers.offers] == [(18813, 100)]
+
+
+async def test_get_stream_returns_single_stream(keitaro, keitaro_api):
+    keitaro_api.get("/streams/564221").respond(json=OFFER_STREAM)
+
+    stream = await keitaro.get_stream(564221)
+
+    assert stream.id == 564221
+    assert [(o.offer_id, o.share) for o in stream.offers] == [(3749, 33), (3717, 33), (11111, 34)]
