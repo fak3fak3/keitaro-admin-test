@@ -16,8 +16,10 @@
 
 **Сдача:** ссылка на GitHub с понятным README по миграциям и запуску. Стек: FastAPI + SQLAlchemy, фронт любой.
 
-**Документация API и ключ:** по ТЗ доступны в админке Keitaro. Админка: `https://tlgk.host/admin/`;
-доступ в админку у пользователя есть. Ключ кладётся только в `.env` (не в git и не в чат).
+**Keitaro.** Админка: `https://tlgk.host/admin/`, API: `https://tlgk.host/admin_api/v1`, заголовок `Api-Key`.
+- Документация API: [keitaro-openapi.yaml](keitaro-openapi.yaml) (OpenAPI 3.0, выгружена из админки
+  `?object=adminApi.spec`). Сверяй с ней запросы и модели клиента, а не с памятью.
+- Ключ: переменная `KEITARO_ADMIN_TOKEN` в `.env` (в `.gitignore`). Ключ проверен: справочники отвечают 200.
 
 ## Поведение редактора (по видео из ТЗ, https://youtu.be/jNloscEWCjA)
 
