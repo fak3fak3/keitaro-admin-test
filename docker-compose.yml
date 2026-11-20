@@ -1,7 +1,7 @@
 services:
   api:
-    build: .
-    env_file: .env
+    build: ./backend
+    env_file: backend/.env
     environment:
       # SQLite в именованном томе: данные переживают пересоздание контейнера
       DATABASE_URL: sqlite+aiosqlite:////data/app.db

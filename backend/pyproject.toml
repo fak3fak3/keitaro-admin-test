@@ -2,7 +2,6 @@
 name = "keitaro-wrapper"
 version = "0.1.0"
 description = "Обёртка над Keitaro Admin API: создание кампаний и редактор офферов"
-readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",

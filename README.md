@@ -1,8 +1,9 @@
 # Keitaro wrapper
 
-Бэкенд-обёртка над [Keitaro](https://keitaro.io) Admin API (тестовое задание Adrobot).
-Стек: FastAPI, SQLAlchemy 2.0 (async), Alembic, httpx. Фронтенд — отдельное React-приложение
-(в разработке), этот репозиторий отдаёт JSON-API.
+Обёртка над [Keitaro](https://keitaro.io) Admin API (тестовое задание Adrobot).
+
+- [`backend/`](backend) — JSON-API на FastAPI, SQLAlchemy 2.0 (async), Alembic, httpx;
+- `frontend/` — React-приложение (в разработке).
 
 1. **Создание кампании.** Name, Geo (`MX,AU,RO`), оффер — в Keitaro создаётся кампания с доменом,
    группой и источником и двумя потоками: страны из Geo → редирект на Google, все остальные → оффер.
@@ -16,10 +17,10 @@
 Нужны Docker с Compose и ключ Keitaro Admin API.
 
 ```bash
-cp .env.example .env
+cp backend/.env.example backend/.env
 ```
 
-Впишите в `.env` ключ `KEITARO_ADMIN_TOKEN` (и при необходимости `KEITARO_URL`), затем:
+Впишите в `backend/.env` ключ `KEITARO_ADMIN_TOKEN` (и при необходимости `KEITARO_URL`), затем:
 
 ```bash
 docker compose up --build
@@ -32,7 +33,12 @@ API поднимется на <http://localhost:8000>, интерактивна�
 
 ## Локальный запуск
 
-Нужны Python ≥ 3.12 и [uv](https://docs.astral.sh/uv/).
+Нужны Python ≥ 3.12 и [uv](https://docs.astral.sh/uv/). Все команды бэкенда выполняются
+из папки `backend/`.
+
+```bash
+cd backend
+```
 
 ```bash
 uv sync
@@ -54,8 +60,9 @@ uv run uvicorn app.main:app --reload
 
 ## Миграции
 
-Схема БД ведётся только через Alembic (папка `migrations/`). Адрес базы берётся из `DATABASE_URL`
-(`.env` или окружение); доступ к Keitaro для миграций не нужен.
+Схема БД ведётся только через Alembic (`backend/migrations/`), команды — из `backend/`.
+Адрес базы берётся из `DATABASE_URL` (`backend/.env` или окружение); доступ к Keitaro для миграций
+не нужен.
 
 | Действие | Команда |
 |---|---|
@@ -65,12 +72,13 @@ uv run uvicorn app.main:app --reload
 | История | `uv run alembic history` |
 | Новая миграция после изменения моделей | `uv run alembic revision --autogenerate -m "описание"` |
 
-Автогенерированную миграцию нужно просмотреть перед применением. Тест `tests/test_migrations.py`
+Автогенерированную миграцию нужно просмотреть перед применением. Тест `backend/tests/test_migrations.py`
 проверяет, что миграции накатываются на пустую базу и совпадают с моделями.
 
 ## Настройки
 
-Все настройки — переменные окружения или `.env` (пример: [.env.example](.env.example)).
+Все настройки бэкенда — переменные окружения или `backend/.env`
+(пример: [backend/.env.example](backend/.env.example)).
 
 | Переменная | По умолчанию | Назначение |
 |---|---|---|
@@ -128,6 +136,8 @@ uv run uvicorn app.main:app --reload
 
 ## Тесты и проверки
 
+Из папки `backend/`:
+
 ```bash
 uv run pytest
 ```
@@ -141,15 +151,18 @@ uv run ruff check . && uv run ruff format --check .
 ## Структура
 
 ```
-app/
-  api/            HTTP-слой: роутеры, зависимости, маппинг ошибок
-  services/       бизнес-логика: создание кампании, редактор, пересчёт долей
-  clients/keitaro клиент Keitaro Admin API и его схемы
-  models/         ORM-модели   repositories/  доступ к БД
-  core/ db/       настройки, engine и сессии
-migrations/       миграции Alembic
-tests/            pytest
-docs/             план, принятые решения, спорные вопросы ТЗ
+backend/
+  app/
+    api/            HTTP-слой: роутеры, зависимости, маппинг ошибок
+    services/       бизнес-логика: создание кампании, редактор, пересчёт долей
+    clients/keitaro клиент Keitaro Admin API и его схемы
+    models/         ORM-модели   repositories/  доступ к БД
+    core/ db/       настройки, engine и сессии
+  migrations/       миграции Alembic
+  tests/            pytest
+frontend/           React-приложение (в разработке)
+docs/               план, принятые решения, спорные вопросы ТЗ
+docker-compose.yml  запуск всего проекта
 ```
 
 Решения и их причины — [docs/DECISIONS.md](docs/DECISIONS.md), ход работы — [docs/PLAN.md](docs/PLAN.md).
