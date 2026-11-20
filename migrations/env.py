@@ -6,6 +6,7 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+import app.models  # noqa: F401  регистрирует модели в Base.metadata для autogenerate
 from app.core.config import DatabaseSettings
 from app.db.base import Base
 

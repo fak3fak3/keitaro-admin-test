@@ -28,3 +28,16 @@ def test_database_url_defaults_to_local_sqlite(monkeypatch):
     settings = Settings(_env_file=None)
 
     assert settings.database_url == "sqlite+aiosqlite:///./app.db"
+
+
+def test_campaign_defaults_match_test_tracker_setup(monkeypatch):
+    monkeypatch.setenv("KEITARO_URL", "https://kt.example")
+    monkeypatch.setenv("KEITARO_ADMIN_TOKEN", "secret-token")
+
+    settings = Settings(_env_file=None)
+
+    assert (settings.keitaro_domain, settings.keitaro_group, settings.keitaro_traffic_source) == (
+        "kylovoa.com",
+        "FORTESTS",
+        "FORTESTS",
+    )

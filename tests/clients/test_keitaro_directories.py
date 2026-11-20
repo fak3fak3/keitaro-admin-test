@@ -1,4 +1,4 @@
-from tests.clients.conftest import TOKEN
+from tests.conftest import TOKEN
 
 
 async def test_list_domains_sends_api_key_and_parses_domains(keitaro, keitaro_api):
