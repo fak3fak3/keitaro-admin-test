@@ -3,10 +3,11 @@ from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import campaigns, editor, health, offers
 from app.api.errors import register_error_handlers
-from app.core.config import DatabaseSettings
+from app.core.config import DatabaseSettings, WebSettings
 from app.db.session import create_engine, create_sessionmaker
 
 
@@ -23,6 +24,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Keitaro wrapper", lifespan=lifespan)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=WebSettings().cors_origin_list,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     register_error_handlers(app)
     app.include_router(health.router, prefix="/api")
     app.include_router(campaigns.router, prefix="/api")

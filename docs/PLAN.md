@@ -88,7 +88,7 @@ View in KT (ссылка на кампанию в трекере), Show all offe
 - [x] 6. Часть 2: сервис редактора: Fetch, Add, Remove, Bring back, Pin, Push to KT, Cancel
 - [x] 6a. Слияние с Keitaro: проверка перед Push, пометки изменений, конфликты (DISPUTED.md №8)
 - [x] 7. Часть 2: эндпоинты редактора + список кампаний
-- [ ] 8. CORS для фронта, Docker Compose, README по миграциям и запуску **← в работе**
+- [x] 8. CORS для фронта, Docker Compose, README по миграциям и запуску
 
 **Фронтенд (отдельное React-приложение, позже)**
 

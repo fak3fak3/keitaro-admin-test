@@ -17,3 +17,15 @@ class Settings(DatabaseSettings):
     keitaro_domain: str = "kylovoa.com"
     keitaro_group: str = "FORTESTS"
     keitaro_traffic_source: str = "FORTESTS"
+
+
+class WebSettings(BaseSettings):
+    """Настройки HTTP-слоя; не требуют доступа к Keitaro."""
+
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    cors_origins: str = "http://localhost:5173"  # адреса фронта через запятую (Vite dev-сервер)
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
