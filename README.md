@@ -3,7 +3,8 @@
 Обёртка над [Keitaro](https://keitaro.io) Admin API (тестовое задание Adrobot).
 
 - [`backend/`](backend) — JSON-API на FastAPI, SQLAlchemy 2.0 (async), Alembic, httpx;
-- `frontend/` — React-приложение (в разработке).
+- [`frontend/`](frontend) — React-приложение: Vite, TypeScript, effector + farfetched, shadcn/ui
+  (в разработке: пока список кампаний).
 
 1. **Создание кампании.** Name, Geo (`MX,AU,RO`), оффер — в Keitaro создаётся кампания с доменом,
    группой и источником и двумя потоками: страны из Geo → редирект на Google, все остальные → оффер.
@@ -57,6 +58,25 @@ uv run alembic upgrade head
 ```bash
 uv run uvicorn app.main:app --reload
 ```
+
+### Фронтенд
+
+Нужен Node.js ≥ 20. Бэкенд должен работать на `localhost:8000`: dev-сервер Vite проксирует
+на него `/api`, поэтому CORS в разработке не нужен.
+
+```bash
+cd frontend
+```
+
+```bash
+npm install
+```
+
+```bash
+npm run dev
+```
+
+Приложение откроется на <http://localhost:5173>.
 
 ## Миграции
 
@@ -148,6 +168,26 @@ uv run ruff check . && uv run ruff format --check .
 
 Тесты не ходят во внешний мир: Keitaro мокается через `respx`, БД — SQLite in-memory.
 
+Фронтенд, из папки `frontend/`:
+
+```bash
+npm test
+```
+
+```bash
+npm run lint && npx tsc -b
+```
+
+Логика фронта — в моделях effector, они тестируются без React через `fork` + `allSettled`
+с подменой запросов; страницы — через Testing Library.
+
+**Типы API** фронта генерируются из схемы FastAPI (`app.openapi()`, бэкенд запускать не нужно).
+После изменения эндпоинтов бэкенда:
+
+```bash
+npm run api:types
+```
+
 ## Структура
 
 ```
@@ -160,7 +200,10 @@ backend/
     core/ db/       настройки, engine и сессии
   migrations/       миграции Alembic
   tests/            pytest
-frontend/           React-приложение (в разработке)
+frontend/src/
+  api/              клиент нашего API, сгенерированные типы, эффекты запросов
+  models/           логика на effector + farfetched (тесты рядом)
+  pages/            страницы   components/ui/  компоненты shadcn
 docs/               план, принятые решения, спорные вопросы ТЗ
 docker-compose.yml  запуск всего проекта
 ```
