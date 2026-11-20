@@ -111,3 +111,12 @@
 - **Решение:** `script_location = migrations`, async-шаблон Alembic.
 - **Почему:** папка `alembic/` в корне совпадает с именем библиотеки: ruff считает её локальным пакетом,
   а импорт `alembic` может её перехватить.
+
+## 19. Клиент Keitaro: httpx снаружи, ошибки — KeitaroError
+
+- **Решение:** `KeitaroClient(base_url, token, http)` получает готовый `httpx.AsyncClient`.
+  Любой ответ 4xx/5xx и сетевой сбой превращаются в `KeitaroError(message, status_code)`;
+  `status_code = None`, если ответа не было. Пустое тело ответа — `None`.
+  `update_stream_offers` отправляет `PUT /streams/{id}` с полным списком офферов: чего нет в списке, удаляется.
+- **Почему:** один `AsyncClient` на приложение (пул соединений, закрывается в lifespan),
+  в тестах подменяется через `respx`; сервисы ловят одно исключение вместо httpx-специфики.
