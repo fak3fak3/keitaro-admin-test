@@ -11,6 +11,7 @@ from app.services.errors import (
     OfferAlreadyInStreamError,
     OfferNotFoundError,
     OfferNotInStreamError,
+    OfferStateError,
     ShareError,
     StreamChangedInKeitaroError,
     StreamNotFoundError,
@@ -236,9 +237,9 @@ async def test_remove_already_removed_and_bring_back_active_are_rejected(editor,
     await fetched(editor, keitaro_api, FOUR)
     await editor.remove_offer(OFFER_STREAM, 3717)
 
-    with pytest.raises(OfferNotInStreamError, match="уже удалён"):
+    with pytest.raises(OfferStateError, match="уже удалён"):
         await editor.remove_offer(OFFER_STREAM, 3717)
-    with pytest.raises(OfferNotInStreamError, match="не удалён"):
+    with pytest.raises(OfferStateError, match="не удалён"):
         await editor.bring_back(OFFER_STREAM, 3749)
 
 
@@ -312,7 +313,7 @@ async def test_pin_removed_offer_is_rejected(editor, keitaro_api, action):
     await fetched(editor, keitaro_api, FOUR)
     await editor.remove_offer(OFFER_STREAM, 3717)
 
-    with pytest.raises(OfferNotInStreamError, match="удалён"):
+    with pytest.raises(OfferStateError, match="удалён"):
         await getattr(editor, action)(OFFER_STREAM, 3717)
 
 

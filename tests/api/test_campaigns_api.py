@@ -62,3 +62,30 @@ async def test_setup_error_returns_503(api, keitaro_api):
 
     assert response.status_code == 503
     assert "домен 'kylovoa.com'" in response.json()["detail"]
+
+
+async def test_list_campaigns_returns_created_ones_newest_first(api, db_session):
+    from app.repositories.campaigns import CampaignRepository
+    from app.schemas.campaign import CreatedCampaign
+
+    repo = CampaignRepository(db_session)
+    for keitaro_id, alias in [(1, "first-aaa111"), (2, "second-bbb222")]:
+        await repo.add(
+            CreatedCampaign(
+                keitaro_id=keitaro_id,
+                name=alias.split("-")[0],
+                alias=alias,
+                geo=["AU"],
+                offer_id=18813,
+                geo_stream_id=10 + keitaro_id,
+                offer_stream_id=20 + keitaro_id,
+            )
+        )
+
+    response = await api.get("/api/campaigns")
+
+    assert response.status_code == 200
+    assert [(c["keitaro_id"], c["url"]) for c in response.json()] == [
+        (2, "https://kylovoa.com/second-bbb222"),
+        (1, "https://kylovoa.com/first-aaa111"),
+    ]

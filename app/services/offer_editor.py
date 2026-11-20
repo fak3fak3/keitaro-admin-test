@@ -16,6 +16,7 @@ from app.services.errors import (
     OfferAlreadyInStreamError,
     OfferNotFoundError,
     OfferNotInStreamError,
+    OfferStateError,
     ShareError,
     StreamChangedInKeitaroError,
     StreamNotFoundError,
@@ -29,6 +30,10 @@ class OfferEditor:
     def __init__(self, keitaro: KeitaroClient, streams: StreamRepository) -> None:
         self._keitaro = keitaro
         self._streams = streams
+
+    async def list_streams(self, campaign_id: int) -> list[Stream]:
+        """Потоки кампании с черновиком из нашей БД, без запроса к Keitaro."""
+        return await self._streams.list_by_campaign(campaign_id)
 
     async def fetch(self, campaign_id: int) -> list[Stream]:
         """Fetch streams from KT: загрузить потоки кампании из Keitaro в нашу БД."""
@@ -85,7 +90,7 @@ class OfferEditor:
         """Remove: оффер сереет (removed, 0%), остальные пересчитываются."""
         stream, link = await self._get_link(stream_id, offer_id)
         if link.status is OfferStatus.REMOVED:
-            raise OfferNotInStreamError(f"Оффер {offer_id} уже удалён из потока")
+            raise OfferStateError(f"Оффер {offer_id} уже удалён из потока")
         with _rebalanced(stream):
             link.status = OfferStatus.REMOVED
         await self._streams.flush()
@@ -95,7 +100,7 @@ class OfferEditor:
         """Bring back: вернуть удалённый оффер в поток."""
         stream, link = await self._get_link(stream_id, offer_id)
         if link.status is not OfferStatus.REMOVED:
-            raise OfferNotInStreamError(f"Оффер {offer_id} не удалён — возвращать нечего")
+            raise OfferStateError(f"Оффер {offer_id} не удалён — возвращать нечего")
         with _rebalanced(stream):
             link.status = OfferStatus.ACTIVE
         await self._streams.flush()
@@ -198,7 +203,7 @@ class OfferEditor:
     ) -> Stream:
         stream, link = await self._get_link(stream_id, offer_id)
         if link.status is OfferStatus.REMOVED:
-            raise OfferNotInStreamError(f"Оффер {offer_id} удалён: сначала Bring back")
+            raise OfferStateError(f"Оффер {offer_id} удалён: сначала Bring back")
         with _rebalanced(stream):
             link.pinned = pinned
             if share is not None:

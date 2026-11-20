@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI
 
-from app.api import campaigns, health, offers
+from app.api import campaigns, editor, health, offers
 from app.api.errors import register_error_handlers
 from app.core.config import DatabaseSettings
 from app.db.session import create_engine, create_sessionmaker
@@ -27,6 +27,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix="/api")
     app.include_router(campaigns.router, prefix="/api")
     app.include_router(offers.router, prefix="/api")
+    app.include_router(editor.router, prefix="/api")
     return app
 
 

@@ -8,7 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.clients.keitaro import KeitaroClient
 from app.core.config import Settings
 from app.repositories.campaigns import CampaignRepository
+from app.repositories.streams import StreamRepository
 from app.services.campaign_creator import CampaignCreator, CampaignDefaults
+from app.services.offer_editor import OfferEditor
 
 
 @lru_cache
@@ -53,3 +55,10 @@ def get_campaign_creator(
         traffic_source=settings.keitaro_traffic_source,
     )
     return CampaignCreator(keitaro, defaults, CampaignRepository(session))
+
+
+def get_offer_editor(keitaro: KeitaroDep, session: SessionDep) -> OfferEditor:
+    return OfferEditor(keitaro, StreamRepository(session))
+
+
+EditorDep = Annotated[OfferEditor, Depends(get_offer_editor)]
