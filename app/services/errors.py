@@ -12,3 +12,15 @@ class OfferNotFoundError(ServiceError):
 
 class ShareError(ServiceError):
     """Закреплённые доли не позволяют распределить 100% (DISPUTED.md №3)."""
+
+
+class StreamNotFoundError(ServiceError):
+    """Потока нет в редакторе: сначала загрузите потоки кампании (Fetch)."""
+
+
+class OfferAlreadyInStreamError(ServiceError):
+    """Оффер уже привязан к потоку."""
+
+
+class OfferNotInStreamError(ServiceError):
+    """Оффера нет в потоке."""
