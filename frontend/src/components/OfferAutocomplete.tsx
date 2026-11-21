@@ -12,11 +12,12 @@ type Props = {
 
 /** Поле поиска оффера с выпадающим списком (ARIA combobox). Логика — в модели `createOfferSearch`. */
 export function OfferAutocomplete({ search, label, invalid }: Props) {
-  const [text, options, selected, pending, textChanged, offerSelected] = useUnit([
+  const [text, options, selected, pending, error, textChanged, offerSelected] = useUnit([
     search.$text,
     search.$options,
     search.$selected,
     search.$pending,
+    search.$error,
     search.textChanged,
     search.offerSelected,
   ])
@@ -53,10 +54,16 @@ export function OfferAutocomplete({ search, label, invalid }: Props) {
               {offerLabel(offer)}
             </li>
           ))}
-          {options.length === 0 && (
-            <li className="px-2 py-1.5 text-muted-foreground">
-              {pending ? 'Поиск…' : 'Ничего не найдено'}
+          {error && !pending ? (
+            <li role="alert" className="px-2 py-1.5 text-destructive">
+              {error}
             </li>
+          ) : (
+            options.length === 0 && (
+              <li className="px-2 py-1.5 text-muted-foreground">
+                {pending ? 'Поиск…' : 'Ничего не найдено'}
+              </li>
+            )
           )}
         </ul>
       )}

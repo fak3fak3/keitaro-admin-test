@@ -1,6 +1,7 @@
 import { Link, Route, Routes } from 'react-router'
 
 import { CampaignsPage } from '@/pages/CampaignsPage'
+import { EditorPage } from '@/pages/EditorPage'
 
 export function AppRoutes() {
   return (
@@ -15,6 +16,7 @@ export function AppRoutes() {
       <main className="mx-auto max-w-5xl px-4 py-6">
         <Routes>
           <Route path="/" element={<CampaignsPage />} />
+          <Route path="/campaigns/:campaignId" element={<EditorPage />} />
         </Routes>
       </main>
     </div>

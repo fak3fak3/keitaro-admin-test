@@ -4,7 +4,7 @@
 
 - [`backend/`](backend) — JSON-API на FastAPI, SQLAlchemy 2.0 (async), Alembic, httpx;
 - [`frontend/`](frontend) — React-приложение: Vite, TypeScript, effector + farfetched, shadcn/ui
-  (в разработке: список кампаний и форма создания готовы, редактор — следующий).
+  — список кампаний, форма создания и редактор офферов.
 
 1. **Создание кампании.** Name, Geo (`MX,AU,RO`), оффер — в Keitaro создаётся кампания с доменом,
    группой и источником и двумя потоками: страны из Geo → редирект на Google, все остальные → оффер.
@@ -203,7 +203,8 @@ backend/
 frontend/src/
   api/              клиент нашего API, сгенерированные типы, эффекты запросов
   models/           логика на effector + farfetched (тесты рядом)
-  pages/            страницы   components/ui/  компоненты shadcn
+  pages/            страницы: кампании, редактор `/campaigns/:id`
+  components/       автокомплит офферов, editor/ — карточка потока   ui/ — shadcn
 docs/               план, принятые решения, спорные вопросы ТЗ
 docker-compose.yml  запуск всего проекта
 ```

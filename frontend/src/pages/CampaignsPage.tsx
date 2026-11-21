@@ -28,7 +28,9 @@ export function CampaignsPage() {
     campaignsPageOpened,
   ])
 
-  useEffect(() => opened(), [opened])
+  useEffect(() => {
+    opened()
+  }, [opened])
 
   return (
     <section className="space-y-6">

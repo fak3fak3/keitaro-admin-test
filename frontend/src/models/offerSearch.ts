@@ -3,6 +3,7 @@ import { createEvent, createStore, sample } from 'effector'
 import { debounce } from 'patronum'
 
 import type { Schemas } from '@/api/client'
+import { errorText } from '@/api/errors'
 import { searchOffersFx } from '@/api/offers'
 
 type Offer = Schemas['OfferOut']
@@ -40,7 +41,7 @@ export function createOfferSearch() {
     $selected,
     $options: query.$data,
     $pending: query.$pending,
-    $error: createStore<string | null>(null),
+    $error: query.$error.map((error) => (error ? errorText(error) : null)),
   }
 }
 
