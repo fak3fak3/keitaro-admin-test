@@ -12,7 +12,6 @@ from app.services.errors import (
     OfferNotFoundError,
     OfferNotInStreamError,
     OfferStateError,
-    ShareError,
     StreamChangedInKeitaroError,
     StreamNotFoundError,
 )
@@ -286,26 +285,23 @@ async def test_set_share_pins_value_and_rebalances_others(editor, keitaro_api):
     assert stream.has_draft is True
 
 
-async def test_impossible_share_is_rejected_and_stream_is_unchanged(editor, keitaro_api):
+async def test_share_leaving_no_room_gives_others_zero(editor, keitaro_api):
     await fetched(editor, keitaro_api, [(3749, 50), (3717, 50)])
 
-    with pytest.raises(ShareError):
-        await editor.set_share(OFFER_STREAM, 3749, 100)
+    stream = await editor.set_share(OFFER_STREAM, 3749, 100)
 
-    stream = await editor.pin(OFFER_STREAM, 3717)  # перечитываем поток через любую операцию
-    assert offers_view(stream) == [(3749, "active", 50, False), (3717, "active", 50, True)]
+    assert offers_view(stream) == [(3749, "active", 100, True), (3717, "active", 0, False)]
 
 
-async def test_removing_last_unpinned_offer_with_pins_below_100_is_rejected(editor, keitaro_api):
-    # DECISIONS.md №25: остаток некому отдать — сначала снимите пин
+async def test_all_pinned_total_below_100_is_allowed(editor, keitaro_api):
+    # пользователь: сумма ≠ 100 — предупреждение на потоке, а не запрет (как в Keitaro)
     await fetched(editor, keitaro_api, [(3749, 25), (3717, 75)])
     await editor.pin(OFFER_STREAM, 3749)
 
-    with pytest.raises(ShareError, match="некому отдать"):
-        await editor.remove_offer(OFFER_STREAM, 3717)
+    stream = await editor.remove_offer(OFFER_STREAM, 3717)
 
-    stream = await editor.unpin(OFFER_STREAM, 3749)
-    assert [status for _, status, _, _ in offers_view(stream)] == ["active", "active"]
+    assert offers_view(stream) == [(3749, "active", 25, True), (3717, "removed", 0, False)]
+    assert stream.has_draft is True
 
 
 @pytest.mark.parametrize("action", ["pin", "unpin"])

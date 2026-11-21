@@ -12,7 +12,11 @@ export function KeitaroMark({ offer }: { offer: StreamOffer }) {
     added: 'добавлен в Keitaro',
     removed: 'удалён в Keitaro',
   }[offer.keitaro_change]
-  return <div className="text-xs text-sky-700 dark:text-sky-400">{text}</div>
+  return (
+    <div className="mt-1 inline-flex rounded bg-sky-100 px-1.5 py-0.5 text-xs text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+      {text}
+    </div>
+  )
 }
 
 /** Оффер изменён и у нас, и в Keitaro: показываем обе версии и даём выбрать. */
@@ -26,7 +30,7 @@ export function ConflictChoice({ streamId, offer, disabled }: { streamId: number
     act({ kind: 'resolve', streamId, offerId: offer.offer_id, keep })
 
   return (
-    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-amber-800 dark:text-amber-300">
+    <div className="mt-1 flex flex-wrap items-center gap-2 rounded bg-amber-100 px-1.5 py-1 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">
       <span>Конфликт: у нас {mine}, в Keitaro {theirs}</span>
       <Button variant="outline" size="xs" disabled={disabled} onClick={() => resolve('mine')}>Моё</Button>
       <Button variant="outline" size="xs" disabled={disabled} onClick={() => resolve('keitaro')}>Keitaro</Button>

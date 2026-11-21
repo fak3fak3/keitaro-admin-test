@@ -1,8 +1,10 @@
 import { useUnit } from 'effector-react'
-import { useEffect } from 'react'
+import { Loader2, Plus } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -27,6 +29,7 @@ export function CampaignsPage() {
     $campaignsPending,
     campaignsPageOpened,
   ])
+  const [formOpen, setFormOpen] = useState(false)
 
   useEffect(() => {
     opened()
@@ -34,9 +37,17 @@ export function CampaignsPage() {
 
   return (
     <section className="space-y-6">
-      <NewCampaignForm />
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">Кампании</h1>
+        {!formOpen && (
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus aria-hidden />
+            New campaign
+          </Button>
+        )}
+      </div>
 
-      <h1 className="text-2xl font-semibold">Кампании</h1>
+      {formOpen && <NewCampaignForm onClose={() => setFormOpen(false)} />}
 
       {error && (
         <Alert variant="destructive">
@@ -70,7 +81,17 @@ export function CampaignsPage() {
               </TableCell>
             </TableRow>
           ))}
-          {!pending && campaigns.length === 0 && (
+          {pending && campaigns.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={4} className="text-muted-foreground">
+                <span className="flex items-center gap-2">
+                  <Loader2 aria-hidden className="size-4 animate-spin" />
+                  Загружаем кампании…
+                </span>
+              </TableCell>
+            </TableRow>
+          )}
+          {!pending && !error && campaigns.length === 0 && (
             <TableRow>
               <TableCell colSpan={4} className="text-muted-foreground">
                 Кампаний пока нет

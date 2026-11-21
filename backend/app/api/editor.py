@@ -1,9 +1,12 @@
 """Часть 2 ТЗ: редактор офферов в потоках кампании. Поток адресуется своим id в Keitaro."""
 
+from collections.abc import AsyncIterator
+
 from fastapi import APIRouter
+from fastapi.sse import EventSourceResponse, ServerSentEvent
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.api.deps import EditorDep
+from app.api.deps import EditorDep, LiveDep
 from app.models.stream import KeitaroChange, OfferStatus, Stream
 from app.services.offer_editor import Keep
 
@@ -131,3 +134,20 @@ async def resolve_all(stream_id: int, body: ResolveIn, editor: EditorDep) -> Str
 async def acknowledge(stream_id: int, editor: EditorDep) -> StreamOut:
     """«Понятно»: снять пометки об изменениях в Keitaro. Конфликты остаются."""
     return _out(await editor.acknowledge(stream_id))
+
+
+@router.get("/campaigns/{campaign_id}/live", response_class=EventSourceResponse)
+async def live_streams(campaign_id: int, live: LiveDep) -> AsyncIterator[ServerSentEvent]:
+    """Live-обновление редактора (SSE): пока соединение открыто, бэкенд опрашивает Keitaro.
+
+    События: `streams` — потоки после слияния, когда в Keitaro что-то изменилось;
+    `keitaro_error` — Keitaro ответил ошибкой (опрос продолжается).
+    """
+    async with live.subscribe(campaign_id) as events:
+        while (event := await events.get()) is not None:  # None — приложение останавливается
+            if event.kind == "streams":
+                data = [_out(stream).model_dump(mode="json") for stream in event.streams]
+                yield ServerSentEvent(event="streams", data=data)
+            else:
+                # не "error": в браузере это имя занято сетевыми ошибками EventSource (onerror)
+                yield ServerSentEvent(event="keitaro_error", data={"detail": event.detail})

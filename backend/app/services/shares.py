@@ -21,7 +21,9 @@ def rebalance(slots: Sequence[ShareSlot]) -> list[int]:
     """Новые доли в том же порядке.
 
     removed — 0; активные запиненные сохраняют долю; активные незапиненные делят
-    `100 − сумма пинов` поровну, остаток по 1% сверху списка.
+    `100 − сумма пинов` поровну, остаток по 1% сверху списка (не меньше 0%).
+    Сумма может получиться не 100% — это не ошибка, а предупреждение на потоке, как в Keitaro
+    (DISPUTED.md №3); ошибка — только доля одного оффера вне 0–100 (Keitaro её не примет).
     """
     shares = [0] * len(slots)
     pinned = [i for i, slot in enumerate(slots) if slot.active and slot.pinned]
@@ -29,30 +31,17 @@ def rebalance(slots: Sequence[ShareSlot]) -> list[int]:
 
     for i in pinned:
         shares[i] = slots[i].share
-    _validate(shares, pinned, free)
+    _validate(shares, pinned)
     if not free:
         return shares
 
-    rest = TOTAL - sum(shares)
+    rest = max(TOTAL - sum(shares), 0)
     base, remainder = divmod(rest, len(free))
     for rank, i in enumerate(free):
         shares[i] = base + (1 if rank < remainder else 0)
     return shares
 
 
-def _validate(shares: list[int], pinned: list[int], free: list[int]) -> None:
+def _validate(shares: list[int], pinned: list[int]) -> None:
     if any(not 0 <= shares[i] <= TOTAL for i in pinned):
         raise ShareError("Доля оффера должна быть от 0 до 100%")
-
-    pinned_total = sum(shares[i] for i in pinned)
-    if pinned_total > TOTAL:
-        raise ShareError(f"Закреплённые доли в сумме {pinned_total}% — больше 100%")
-    if free and TOTAL - pinned_total < len(free):
-        raise ShareError(
-            f"Закреплено {pinned_total}%: незакреплённым офферам ({len(free)}) не остаётся доли"
-        )
-    if pinned and not free and pinned_total != TOTAL:
-        raise ShareError(
-            f"Закреплено {pinned_total}%, а остаток {TOTAL - pinned_total}% некому отдать: "
-            "все активные офферы закреплены"
-        )

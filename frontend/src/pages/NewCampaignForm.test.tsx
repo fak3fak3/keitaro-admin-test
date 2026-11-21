@@ -75,3 +75,10 @@ test('ошибка валидации показывается у поля', asy
 
   expect(await screen.findByText("неверный код страны: 'MXX'")).toBeInTheDocument()
 })
+
+test('у полей есть подсказки по формату', () => {
+  renderForm(async () => CREATED)
+
+  expect(screen.getByText('Коды стран через запятую, например MX,AU,RO')).toBeInTheDocument()
+  expect(screen.getByText(/Начинайте с test_mirolyubov_/)).toBeInTheDocument()
+})

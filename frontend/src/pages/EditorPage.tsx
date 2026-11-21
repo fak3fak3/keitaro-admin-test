@@ -1,13 +1,18 @@
 import { useUnit } from 'effector-react'
+import { Loader2, RefreshCw } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, useParams } from 'react-router'
 
+import { LiveIndicator } from '@/components/editor/LiveIndicator'
+import { Notice } from '@/components/editor/Notice'
 import { StreamCard } from '@/components/editor/StreamCard'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
+  $campaignName,
   $editorError,
+  $liveError,
   $streams,
+  editorClosed,
   editorOpened,
   errorDismissed,
   fetchClicked,
@@ -17,42 +22,76 @@ import {
 
 export function EditorPage() {
   const campaignId = Number(useParams().campaignId)
-  const [streams, loaded, fetching, error] = useUnit([
+  const [streams, status, fetching, error, liveError, campaignName] = useUnit([
     $streams,
-    streamsQuery.$finished,
+    streamsQuery.$status,
     fetchMutation.$pending,
     $editorError,
+    $liveError,
+    $campaignName,
   ])
-  const [opened, fetch, dismiss] = useUnit([editorOpened, fetchClicked, errorDismissed])
+  const [opened, closed, fetch, dismiss] = useUnit([
+    editorOpened,
+    editorClosed,
+    fetchClicked,
+    errorDismissed,
+  ])
 
+  // Пока страница открыта — live-соединение (бэкенд опрашивает Keitaro); ушли — закрываем
   useEffect(() => {
     opened(campaignId)
-  }, [opened, campaignId])
+    return () => {
+      closed()
+    }
+  }, [opened, closed, campaignId])
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <nav aria-label="Хлебные крошки" className="text-sm text-muted-foreground">
           <Link to="/" className="hover:underline">Кампании</Link>
-          {' / '}Кампания {campaignId}{' / '}
-          <span className="text-foreground">Keitaro Streams</span>
+          {' / '}
+          <span className="text-foreground">{campaignName ?? `Кампания ${campaignId}`}</span>
+          {' / '}Keitaro Streams
         </nav>
-        <Button onClick={() => fetch()} disabled={fetching}>
-          {fetching ? 'Загружаем…' : 'Fetch streams from KT'}
-        </Button>
+        <div className="flex items-center gap-4">
+          <LiveIndicator />
+          <Button onClick={() => fetch()} disabled={fetching}>
+            {fetching ? <Loader2 aria-hidden className="animate-spin" /> : <RefreshCw aria-hidden />}
+            {fetching ? 'Загружаем…' : 'Fetch streams from KT'}
+          </Button>
+        </div>
       </div>
 
+      {/* Уровень кампании: загрузка, Fetch и опрос Keitaro. Ошибки действий — на своих потоках. */}
       {error && (
-        <Alert variant="destructive" className="flex items-start justify-between gap-3">
-          <AlertDescription>{error}</AlertDescription>
-          <Button variant="ghost" size="sm" onClick={() => dismiss()}>Закрыть</Button>
-        </Alert>
+        <Notice
+          tone="error"
+          role="alert"
+          actions={<Button variant="ghost" size="xs" onClick={() => dismiss()}>Закрыть</Button>}
+        >
+          {error}
+        </Notice>
       )}
 
-      {loaded && streams.length === 0 && (
-        <p className="text-muted-foreground">
-          Потоки кампании ещё не загружены. Нажмите Fetch streams from KT.
+      {liveError && (
+        <Notice tone="warning" role="status">
+          <p className="font-medium">Keitaro не отвечает — изменения из трекера не приходят.</p>
+          <p className="text-xs opacity-80">{liveError}</p>
+        </Notice>
+      )}
+
+      {status === 'pending' && streams.length === 0 && (
+        <p className="flex items-center gap-2 py-8 text-muted-foreground">
+          <Loader2 aria-hidden className="size-4 animate-spin" />
+          Загружаем потоки…
         </p>
+      )}
+
+      {status === 'done' && streams.length === 0 && (
+        <div className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
+          Потоки кампании ещё не загружены. Нажмите Fetch streams from KT — они придут из Keitaro.
+        </div>
       )}
 
       {streams.map((stream) => (

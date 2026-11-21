@@ -17,6 +17,8 @@ class Settings(DatabaseSettings):
     keitaro_domain: str = "kylovoa.com"
     keitaro_group: str = "FORTESTS"
     keitaro_traffic_source: str = "FORTESTS"
+    # Как часто опрашивать Keitaro, пока открыт редактор (секунды; DECISIONS.md №37)
+    keitaro_poll_interval: float = 1.0
 
 
 class WebSettings(BaseSettings):

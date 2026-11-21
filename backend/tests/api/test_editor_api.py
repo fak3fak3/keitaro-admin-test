@@ -286,11 +286,26 @@ async def test_push_when_keitaro_changed_after_fetch_returns_409(api, keitaro_ap
     assert "Fetch" in response.json()["detail"]
 
 
-async def test_impossible_share_returns_400_and_keeps_stream(api, keitaro_api):
+async def test_single_offer_share_below_100_is_accepted(api, keitaro_api):
+    # скриншот пользователя: один оффер, доля 20% — раньше 400, теперь черновик с суммой 20%
+    await fetch(api, keitaro_api, [(3749, 100)])
+
+    response = await api.put(offer_url(3749, "share"), json={"share": 20})
+
+    assert response.status_code == 200
+    assert shares(response.json()) == [(3749, "active", 20, True)]
+    assert response.json()["has_draft"] is True
+
+
+async def test_editor_action_waits_while_live_merge_holds_the_lock(api, keitaro_api, editor_lock):
+    import asyncio
+
     await fetch(api, keitaro_api, THREE)
 
-    response = await api.put(offer_url(3717, "share"), json={"share": 100})
-    (stream,) = (await api.get(f"/api/campaigns/{CAMPAIGN}/streams")).json()
+    async with editor_lock:  # идёт слияние из live-опроса
+        request = asyncio.create_task(api.post(offer_url(3717, "remove")))
+        await asyncio.sleep(0.05)
+        assert not request.done()
 
-    assert response.status_code == 400
-    assert stream["has_draft"] is False
+    response = await request
+    assert response.status_code == 200

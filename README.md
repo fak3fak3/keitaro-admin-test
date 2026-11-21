@@ -56,8 +56,11 @@ uv run alembic upgrade head
 ```
 
 ```bash
-uv run uvicorn app.main:app --reload
+uv run uvicorn app.main:app --reload --timeout-graceful-shutdown 3
 ```
+
+`--timeout-graceful-shutdown` нужен из-за live-обновления редактора: без него открытое
+SSE-соединение не даёт серверу остановиться (uvicorn ждёт закрытия всех соединений).
 
 ### Фронтенд
 
@@ -109,6 +112,7 @@ npm run dev
 | `KEITARO_GROUP` | `FORTESTS` | Группа новых кампаний |
 | `KEITARO_TRAFFIC_SOURCE` | `FORTESTS` | Источник трафика новых кампаний |
 | `CORS_ORIGINS` | `http://localhost:5173` | Адреса фронтенда через запятую |
+| `KEITARO_POLL_INTERVAL` | `1` | Как часто (сек) опрашивать Keitaro, пока открыт редактор |
 
 Для PostgreSQL добавьте драйвер (`uv add asyncpg`) и укажите
 `DATABASE_URL=postgresql+asyncpg://user:pass@host/db`.
@@ -133,6 +137,7 @@ npm run dev
 |---|---|
 | `POST /campaigns/{id}/fetch` | Fetch streams from KT: загрузить потоки и слить с черновиком |
 | `GET /campaigns/{id}/streams` | Текущее состояние редактора из БД, без запроса в Keitaro |
+| `GET /campaigns/{id}/live` | SSE: пока соединение открыто, бэкенд опрашивает Keitaro и присылает потоки при изменениях |
 | `POST /streams/{id}/offers` | Add: `{"offer_id"}` |
 | `POST /streams/{id}/offers/{offer_id}/remove` | Remove: оффер остаётся серым с долей 0% |
 | `POST /streams/{id}/offers/{offer_id}/bring-back` | Bring back |
@@ -143,6 +148,13 @@ npm run dev
 | `POST /streams/{id}/acknowledge` | Снять пометки об изменениях из Keitaro |
 | `POST /streams/{id}/push` | Push to KT: опубликовать черновик |
 | `POST /streams/{id}/cancel` | Cancel: вернуть опубликованное состояние |
+
+**Live-обновление.** Пока открыта страница редактора, фронт держит SSE-соединение
+`/campaigns/{id}/live`. Бэкенд раз в `KEITARO_POLL_INTERVAL` секунд читает потоки кампании в Keitaro
+и, только если что-то изменилось, сливает их с черновиком и присылает событие `streams`
+(`keitaro_error` — Keitaro ответил ошибкой). Один опрос на кампанию для всех открытых вкладок;
+закрыли страницу — опрос останавливается. Кнопка Fetch остаётся для принудительного обновления.
+Состояние опроса живёт в памяти процесса: uvicorn запускается в одном воркере.
 
 **Ошибки** приходят как `{"detail": "сообщение"}`:
 404 — нет потока или оффера (поток сначала нужно загрузить через Fetch);

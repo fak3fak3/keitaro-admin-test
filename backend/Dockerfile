@@ -16,4 +16,5 @@ COPY app ./app
 
 EXPOSE 8000
 # Миграции при каждом старте: alembic применяет только недостающие
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# --timeout-graceful-shutdown: открытые SSE-соединения редактора иначе не дают серверу остановиться
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --timeout-graceful-shutdown 3"]

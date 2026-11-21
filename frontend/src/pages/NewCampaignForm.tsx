@@ -22,7 +22,7 @@ import {
   offerSearch,
 } from '@/models/newCampaign'
 
-export function NewCampaignForm() {
+export function NewCampaignForm({ onClose }: { onClose?: () => void }) {
   const [name, geo, canSubmit, pending, created, fieldErrors, formError] = useUnit([
     $name,
     $geo,
@@ -42,21 +42,22 @@ export function NewCampaignForm() {
   // overflow-visible: у Card по умолчанию overflow-hidden, он обрезает выпадающий список офферов
   return (
     <Card className="overflow-visible">
-      <CardHeader>
+      <CardHeader className="flex items-center justify-between">
         <CardTitle>New campaign</CardTitle>
+        {onClose && <Button variant="ghost" size="sm" onClick={onClose}>Свернуть</Button>}
       </CardHeader>
       <CardContent className="space-y-4">
         <form className="grid gap-4 md:grid-cols-3" onSubmit={submit} noValidate>
-          <Field id="campaign-name" label="Название" error={fieldErrors.name}>
+          <Field id="campaign-name" label="Название" error={fieldErrors.name} hint="Начинайте с test_mirolyubov_ — так требует заказчик">
             <Input
               id="campaign-name"
-              placeholder="test_mirolyubov_campaign1"
+              placeholder="test_mirolyubov_…"
               value={name}
               aria-invalid={Boolean(fieldErrors.name) || undefined}
               onChange={(event) => onName(event.target.value)}
             />
           </Field>
-          <Field id="campaign-geo" label="Гео" error={fieldErrors.geo}>
+          <Field id="campaign-geo" label="Гео" error={fieldErrors.geo} hint="Коды стран через запятую, например MX,AU,RO">
             <Input
               id="campaign-geo"
               placeholder="MX,AU,RO"
@@ -65,7 +66,7 @@ export function NewCampaignForm() {
               onChange={(event) => onGeo(event.target.value)}
             />
           </Field>
-          <Field label="Оффер" error={fieldErrors.offer_id}>
+          <Field label="Оффер" error={fieldErrors.offer_id} hint="Поиск по названию или id в Keitaro">
             <OfferAutocomplete search={offerSearch} label="Оффер" invalid={Boolean(fieldErrors.offer_id)} />
           </Field>
           <div className="md:col-span-3">
@@ -105,18 +106,20 @@ function Field({
   id,
   label,
   error,
+  hint,
   children,
 }: {
   id?: string
   label: string
   error?: string
+  hint?: string
   children: React.ReactNode
 }) {
   return (
     <div className="space-y-1.5">
       {id ? <Label htmlFor={id}>{label}</Label> : <Label>{label}</Label>}
       {children}
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error ? <p className="text-sm text-destructive">{error}</p> : hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   )
 }

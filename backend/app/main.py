@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -16,9 +17,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Один httpx-клиент и один engine БД на всё приложение."""
     engine = create_engine(DatabaseSettings().database_url)
     app.state.sessionmaker = create_sessionmaker(engine)
+    app.state.editor_lock = asyncio.Lock()
     async with httpx.AsyncClient(timeout=30) as http:
         app.state.http = http
+        app.state.live = None  # сервис live-опроса создаётся при первом открытии редактора
         yield
+        if app.state.live is not None:
+            # uvicorn доходит сюда, когда закроет соединения: SSE сами не закрываются, поэтому
+            # сервер запускаем с --timeout-graceful-shutdown (README)
+            await app.state.live.close()
     await engine.dispose()
 
 

@@ -37,7 +37,14 @@ async def db_session():
 
 
 @pytest.fixture
-async def api(keitaro, keitaro_api, db_session):
+def editor_lock():
+    import asyncio
+
+    return asyncio.Lock()
+
+
+@pytest.fixture
+async def api(keitaro, keitaro_api, db_session, editor_lock):
     """HTTP-клиент к нашему приложению; Keitaro — мок respx, БД — in-memory."""
     from httpx import ASGITransport, AsyncClient
 
@@ -51,6 +58,7 @@ async def api(keitaro, keitaro_api, db_session):
     )
     app.dependency_overrides[deps.get_keitaro] = lambda: keitaro
     app.dependency_overrides[deps.get_session] = lambda: db_session
+    app.dependency_overrides[deps.get_editor_lock] = lambda: editor_lock
 
     # ASGITransport ходит в приложение напрямую, respx его не перехватывает.
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:

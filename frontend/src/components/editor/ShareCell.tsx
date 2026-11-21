@@ -1,5 +1,5 @@
 import { useUnit } from 'effector-react'
-import { Pin, PinOff } from 'lucide-react'
+import { Pin } from 'lucide-react'
 import { useState } from 'react'
 
 import type { StreamOffer } from '@/api/streams'
@@ -16,7 +16,7 @@ export function ShareCell({ streamId, offer, disabled }: Props) {
   const [invalid, setInvalid] = useState(false)
   const target = { streamId, offerId: offer.offer_id }
 
-  if (offer.status === 'removed') return <span>{offer.share}%</span>
+  if (offer.status === 'removed') return <span className="px-2.5 text-muted-foreground">{offer.share}%</span>
 
   function open() {
     setDraft(String(offer.share))
@@ -36,7 +36,7 @@ export function ShareCell({ streamId, offer, disabled }: Props) {
   return (
     <div className="flex items-center gap-1">
       {draft === null ? (
-        <Button variant="ghost" size="sm" disabled={disabled} onClick={open}>
+        <Button variant="ghost" size="sm" className="font-semibold tabular-nums underline decoration-dotted underline-offset-4" title="Задать долю вручную" disabled={disabled} onClick={open}>
           {offer.share}%
         </Button>
       ) : (
@@ -72,7 +72,7 @@ export function ShareCell({ streamId, offer, disabled }: Props) {
         aria-pressed={offer.pinned}
         onClick={() => act({ kind: offer.pinned ? 'unpin' : 'pin', ...target })}
       >
-        {offer.pinned ? <Pin className="fill-current" /> : <PinOff className="opacity-40" />}
+        <Pin className={offer.pinned ? 'fill-current text-primary' : 'text-muted-foreground/50'} />
       </Button>
     </div>
   )

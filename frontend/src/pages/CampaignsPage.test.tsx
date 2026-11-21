@@ -1,15 +1,17 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { fork } from 'effector'
 import { Provider } from 'effector-react'
 import { MemoryRouter } from 'react-router'
 
 import { listCampaignsFx } from '@/api/campaigns'
 import { ApiError } from '@/api/client'
+import { searchOffersFx } from '@/api/offers'
 
 import { CampaignsPage } from './CampaignsPage'
 
 function renderPage(handler: () => Promise<unknown>) {
-  const scope = fork({ handlers: [[listCampaignsFx, handler]] })
+  const scope = fork({ handlers: [[listCampaignsFx, handler], [searchOffersFx, async () => []]] })
   render(
     <Provider value={scope}>
       <MemoryRouter>
@@ -50,4 +52,23 @@ test('пустой список — подсказка', async () => {
   renderPage(async () => [])
 
   expect(await screen.findByText('Кампаний пока нет')).toBeInTheDocument()
+})
+
+test('пока список грузится — индикатор загрузки', async () => {
+  renderPage(() => new Promise(() => {}))
+
+  expect(await screen.findByText('Загружаем кампании…')).toBeInTheDocument()
+})
+
+test('форма новой кампании открывается кнопкой над списком и закрывается', async () => {
+  const user = userEvent.setup()
+  renderPage(async () => [])
+  await screen.findByText('Кампаний пока нет')
+  expect(screen.queryByRole('textbox', { name: 'Название' })).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'New campaign' }))
+  expect(screen.getByRole('textbox', { name: 'Название' })).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Свернуть' }))
+  expect(screen.queryByRole('textbox', { name: 'Название' })).not.toBeInTheDocument()
 })

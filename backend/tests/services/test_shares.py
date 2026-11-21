@@ -67,20 +67,27 @@ def test_pinned_removed_offer_gets_zero():
 
 
 @pytest.mark.parametrize(
-    ("slots", "reason"),
+    ("slots", "expected"),
     [
-        ([active(60, pinned=True), active(50, pinned=True), active()], "больше 100%"),
-        ([active(100, pinned=True), active()], "не остаётся доли"),
-        ([active(99, pinned=True), active(), active()], "не остаётся доли"),
-        ([active(25, pinned=True), active(50, pinned=True)], "некому отдать"),
-        ([active(25, pinned=True), removed()], "некому отдать"),
-        ([active(101, pinned=True)], "от 0 до 100"),
-        ([active(-1, pinned=True), active()], "от 0 до 100"),
+        # все активные закреплены — доли как есть, даже если сумма не 100 (DISPUTED.md №3)
+        ([active(25, pinned=True), active(50, pinned=True)], [25, 50]),
+        ([active(25, pinned=True), removed()], [25, 0]),
+        ([active(60, pinned=True), active(50, pinned=True)], [60, 50]),
+        # закреплённые не оставляют места — незакреплённым остаток или 0%
+        ([active(100, pinned=True), active()], [100, 0]),
+        ([active(99, pinned=True), active(), active()], [99, 1, 0]),
+        ([active(60, pinned=True), active(50, pinned=True), active()], [60, 50, 0]),
     ],
 )
-def test_impossible_pins_are_rejected(slots, reason):
-    with pytest.raises(ShareError, match=reason):
-        rebalance(slots)
+def test_total_other_than_100_is_allowed(slots, expected):
+    assert rebalance(slots) == expected
+
+
+@pytest.mark.parametrize("share", [101, -1])
+def test_share_outside_0_100_is_rejected(share):
+    # единственное, что Keitaro не примет: доля одного оффера вне 0–100 (422)
+    with pytest.raises(ShareError, match="от 0 до 100"):
+        rebalance([active(share, pinned=True), active()])
 
 
 def test_share_error_is_a_service_error():
