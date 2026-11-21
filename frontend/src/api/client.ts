@@ -7,11 +7,14 @@ export type Schemas = components['schemas']
 /** Ошибка нашего API: статус и сообщение для пользователя из `{"detail": "..."}`. */
 export class ApiError extends Error {
   readonly status: number
+  /** Ошибки валидации (422) по полям запроса: `{ geo: "неверный код страны: 'Mexico'" }`. */
+  readonly fields: Record<string, string>
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, fields: Record<string, string> = {}) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.fields = fields
   }
 }
 
@@ -25,12 +28,23 @@ type ApiResult<T> = { data?: T; error?: unknown; response: Response }
 export async function unwrap<T>(request: Promise<ApiResult<T>>): Promise<T> {
   const { data, error, response } = await request
   if (!response.ok) {
-    throw new ApiError(response.status, errorMessage(error, response.status))
+    throw toApiError(response.status, (error as { detail?: unknown } | undefined)?.detail)
   }
   return data as T
 }
 
-function errorMessage(error: unknown, status: number): string {
-  const detail = (error as { detail?: unknown } | undefined)?.detail
-  return typeof detail === 'string' ? detail : `Ошибка сервера (${status})`
+type ValidationIssue = { loc: (string | number)[]; msg: string }
+
+function toApiError(status: number, detail: unknown): ApiError {
+  if (typeof detail === 'string') return new ApiError(status, detail)
+  if (Array.isArray(detail)) {
+    const fields = Object.fromEntries(
+      (detail as ValidationIssue[]).map((issue) => [
+        String(issue.loc.at(-1)),
+        issue.msg.replace(/^Value error, /, ''),
+      ]),
+    )
+    return new ApiError(status, 'Проверьте поля формы', fields)
+  }
+  return new ApiError(status, `Ошибка сервера (${status})`)
 }

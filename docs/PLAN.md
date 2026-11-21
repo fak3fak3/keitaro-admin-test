@@ -94,7 +94,7 @@ View in KT (ссылка на кампанию в трекере), Show all offe
 
 - [x] 8a. Переезд бэкенда в `backend/` (DECISIONS.md №32)
 - [x] 9. Каркас React-приложения, работа с нашим API
-- [ ] 10. Форма «New campaign» (Name, Geo, Offer с автокомплитом)
+- [x] 10. Форма «New campaign» (Name, Geo, Offer с автокомплитом)
 - [ ] 11. Редактор кампании
 - [ ] 11a. Docker для фронта: сборка + nginx (статика и прокси `/api`), сервис `web` в compose
 

@@ -26,3 +26,22 @@ test('ошибка бэкенда превращается в ApiError с его
     message: 'Решите конфликты с Keitaro по офферам 3749, затем Push',
   })
 })
+
+test('ошибки валидации (422) раскладываются по полям', async () => {
+  const api = createApi(respond(422, {
+    detail: [
+      { type: 'value_error', loc: ['body', 'geo'], msg: "Value error, неверный код страны: 'Mexico'" },
+      { type: 'greater_than', loc: ['body', 'offer_id'], msg: 'Input should be greater than 0' },
+    ],
+  }))
+
+  const error = await unwrap(api.POST('/api/campaigns', {
+    body: { name: 'X', geo: ['Mexico'], offer_id: 0 },
+  })).catch((e: unknown) => e)
+
+  expect(error).toMatchObject({
+    status: 422,
+    message: 'Проверьте поля формы',
+    fields: { geo: "неверный код страны: 'Mexico'", offer_id: 'Input should be greater than 0' },
+  })
+})

@@ -18,6 +18,8 @@ import {
   campaignsPageOpened,
 } from '@/models/campaigns'
 
+import { NewCampaignForm } from './NewCampaignForm'
+
 export function CampaignsPage() {
   const [campaigns, error, pending, opened] = useUnit([
     $campaigns,
@@ -29,7 +31,9 @@ export function CampaignsPage() {
   useEffect(() => opened(), [opened])
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-6">
+      <NewCampaignForm />
+
       <h1 className="text-2xl font-semibold">Кампании</h1>
 
       {error && (

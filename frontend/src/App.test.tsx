@@ -19,4 +19,5 @@ test('на главной — список кампаний', async () => {
   )
 
   expect(await screen.findByRole('heading', { name: 'Кампании' })).toBeInTheDocument()
+  expect(screen.getByText('New campaign')).toBeInTheDocument()
 })
