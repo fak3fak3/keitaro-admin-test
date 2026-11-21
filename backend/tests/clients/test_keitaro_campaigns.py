@@ -3,6 +3,16 @@ import json
 from app.clients.keitaro.schemas import CampaignCreate
 
 
+async def test_get_campaign_requests_campaign_by_id(keitaro, keitaro_api):
+    keitaro_api.get("/campaigns/93212").respond(
+        json={"id": 93212, "name": "campaign 2", "alias": "wVqN1R", "state": "active"}
+    )
+
+    campaign = await keitaro.get_campaign(93212)
+
+    assert (campaign.id, campaign.name, campaign.alias) == (93212, "campaign 2", "wVqN1R")
+
+
 async def test_create_campaign_posts_settings_and_returns_campaign(keitaro, keitaro_api):
     route = keitaro_api.post("/campaigns").respond(
         json={"id": 93212, "name": "campaign 2", "alias": "wVqN1R", "state": "active"}

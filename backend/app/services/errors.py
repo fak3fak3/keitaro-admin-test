@@ -10,6 +10,10 @@ class CampaignSetupError(ServiceError):
     """В Keitaro нет домена, группы или источника, с которыми создаются кампании."""
 
 
+class CampaignNotFoundError(ServiceError):
+    """Кампанию с указанным ID не удалось найти в Keitaro."""
+
+
 class OfferNotFoundError(ServiceError):
     """Оффера нет в Keitaro или он недоступен по нашему ключу."""
 

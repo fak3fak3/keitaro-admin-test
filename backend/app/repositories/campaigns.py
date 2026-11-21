@@ -1,6 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.clients.keitaro.schemas import Campaign as KeitaroCampaign
 from app.models.campaign import Campaign
 from app.schemas.campaign import CreatedCampaign
 
@@ -18,6 +19,21 @@ class CampaignRepository:
             offer_id=created.offer_id,
             geo_stream_id=created.geo_stream_id,
             offer_stream_id=created.offer_stream_id,
+        )
+        self._session.add(campaign)
+        await self._session.flush()
+        await self._session.refresh(campaign)
+        return campaign
+
+    async def add_connected(self, connected: KeitaroCampaign) -> Campaign:
+        campaign = Campaign(
+            keitaro_id=connected.id,
+            name=connected.name,
+            alias=connected.alias,
+            geo=None,
+            offer_id=None,
+            geo_stream_id=None,
+            offer_stream_id=None,
         )
         self._session.add(campaign)
         await self._session.flush()

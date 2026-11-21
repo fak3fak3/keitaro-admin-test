@@ -44,6 +44,10 @@ class KeitaroClient:
         data = await self._request("POST", "/campaigns", json=payload.model_dump())
         return Campaign.model_validate(data)
 
+    async def get_campaign(self, campaign_id: int) -> Campaign:
+        data = await self._request("GET", f"/campaigns/{campaign_id}")
+        return Campaign.model_validate(data)
+
     async def delete_campaign(self, campaign_id: int) -> None:
         """Keitaro не удаляет кампанию насовсем, а переносит в архив."""
         await self._request("DELETE", f"/campaigns/{campaign_id}")

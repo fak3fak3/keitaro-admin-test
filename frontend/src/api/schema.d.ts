@@ -42,6 +42,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Connect Campaign */
+        post: operations["connect_campaign_api_campaigns_connect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/offers": {
         parameters: {
             query?: never;
@@ -322,6 +339,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaign_id}/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Live Streams
+         * @description Live-обновление редактора (SSE): пока соединение открыто, бэкенд опрашивает Keitaro.
+         *
+         *     События: `streams` — потоки после слияния, когда в Keitaro что-то изменилось;
+         *     `keitaro_error` — Keitaro ответил ошибкой (опрос продолжается).
+         */
+        get: operations["live_streams_api_campaigns__campaign_id__live_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -330,6 +370,11 @@ export interface components {
         AddOfferIn: {
             /** Offer Id */
             offer_id: number;
+        };
+        /** CampaignConnectRequest */
+        CampaignConnectRequest: {
+            /** Keitaro Id */
+            keitaro_id: number;
         };
         /** CampaignCreateRequest */
         CampaignCreateRequest: {
@@ -352,9 +397,9 @@ export interface components {
             /** Alias */
             alias: string;
             /** Geo */
-            geo: string[];
+            geo: string[] | null;
             /** Offer Id */
-            offer_id: number;
+            offer_id: number | null;
             /** Url */
             url: string;
         };
@@ -509,6 +554,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["CampaignCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    connect_campaign_api_campaigns_connect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampaignConnectRequest"];
             };
         };
         responses: {
@@ -975,6 +1053,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StreamOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    live_streams_api_campaigns__campaign_id__live_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": unknown;
                 };
             };
             /** @description Validation Error */

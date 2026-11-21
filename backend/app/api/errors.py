@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 
 from app.clients.keitaro import KeitaroError
 from app.services.errors import (
+    CampaignNotFoundError,
     CampaignSetupError,
     OfferNotFoundError,
     OfferNotInStreamError,
@@ -13,6 +14,7 @@ from app.services.errors import (
 
 # От частного к общему: берётся первый подходящий класс.
 SERVICE_ERROR_STATUS: list[tuple[type[ServiceError], int]] = [
+    (CampaignNotFoundError, status.HTTP_404_NOT_FOUND),
     (OfferNotFoundError, status.HTTP_404_NOT_FOUND),
     (StreamNotFoundError, status.HTTP_404_NOT_FOUND),
     (OfferNotInStreamError, status.HTTP_404_NOT_FOUND),

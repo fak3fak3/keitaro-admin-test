@@ -7,7 +7,7 @@ from app.db.base import Base
 
 
 class Campaign(Base):
-    """Кампания, созданная через нашу обёртку (реестр; источник правды — Keitaro)."""
+    """Кампания, подключённая в наш сервис; источник правды о кампании — Keitaro."""
 
     __tablename__ = "campaigns"
 
@@ -15,8 +15,8 @@ class Campaign(Base):
     keitaro_id: Mapped[int] = mapped_column(unique=True, index=True)
     name: Mapped[str]
     alias: Mapped[str]
-    geo: Mapped[list[str]] = mapped_column(JSON)
-    offer_id: Mapped[int]
-    geo_stream_id: Mapped[int]
-    offer_stream_id: Mapped[int]
+    geo: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    offer_id: Mapped[int | None] = mapped_column(nullable=True)
+    geo_stream_id: Mapped[int | None] = mapped_column(nullable=True)
+    offer_stream_id: Mapped[int | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

@@ -4,14 +4,23 @@ import { fork } from 'effector'
 import { Provider } from 'effector-react'
 import { MemoryRouter } from 'react-router'
 
-import { listCampaignsFx } from '@/api/campaigns'
+import { connectCampaignFx, listCampaignsFx } from '@/api/campaigns'
 import { ApiError } from '@/api/client'
 import { searchOffersFx } from '@/api/offers'
 
 import { CampaignsPage } from './CampaignsPage'
 
-function renderPage(handler: () => Promise<unknown>) {
-  const scope = fork({ handlers: [[listCampaignsFx, handler], [searchOffersFx, async () => []]] })
+function renderPage(
+  handler: () => Promise<unknown>,
+  connect: (body: unknown) => Promise<unknown> = async () => ({}),
+) {
+  const scope = fork({
+    handlers: [
+      [listCampaignsFx, handler],
+      [connectCampaignFx, connect],
+      [searchOffersFx, async () => []],
+    ],
+  })
   render(
     <Provider value={scope}>
       <MemoryRouter>
@@ -52,6 +61,41 @@ test('пустой список — подсказка', async () => {
   renderPage(async () => [])
 
   expect(await screen.findByText('Кампаний пока нет')).toBeInTheDocument()
+})
+
+test('показывает форму подключения кампании Keitaro по ID', async () => {
+  renderPage(async () => [])
+
+  expect(await screen.findByRole('textbox', { name: 'ID кампании Keitaro' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Подключить' })).toBeInTheDocument()
+})
+
+test('подключает кампанию по введённому ID и обновляет список', async () => {
+  const user = userEvent.setup()
+  const connected = {
+    keitaro_id: 93212,
+    name: 'campaign 2',
+    alias: 'campaign-2',
+    geo: null,
+    offer_id: null,
+    url: 'https://kylovoa.com/campaign-2',
+  }
+  const sent: unknown[] = []
+  let listCalls = 0
+  renderPage(
+    async () => (listCalls++ === 0 ? [] : [connected]),
+    async (body: unknown) => { sent.push(body); return connected },
+  )
+
+  await user.type(await screen.findByRole('textbox', { name: 'ID кампании Keitaro' }), '93212')
+  await user.click(screen.getByRole('button', { name: 'Подключить' }))
+
+  expect(sent).toEqual([{ keitaro_id: 93212 }])
+  expect(await screen.findByRole('link', { name: 'campaign 2' })).toHaveAttribute(
+    'href',
+    '/campaigns/93212',
+  )
+  expect(screen.getAllByText('—')).toHaveLength(2)
 })
 
 test('пока список грузится — индикатор загрузки', async () => {
